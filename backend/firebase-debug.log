@@ -1,0 +1,29 @@
+[debug] [2024-12-09T14:58:52.489Z] ----------------------------------------------------------------------
+[debug] [2024-12-09T14:58:52.495Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\Administrator\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js init
+[debug] [2024-12-09T14:58:52.495Z] CLI Version:   13.28.0
+[debug] [2024-12-09T14:58:52.496Z] Platform:      win32
+[debug] [2024-12-09T14:58:52.496Z] Node Version:  v20.4.0
+[debug] [2024-12-09T14:58:52.497Z] Time:          Mon Dec 09 2024 20:28:52 GMT+0530 (India Standard Time)
+[debug] [2024-12-09T14:58:52.497Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2024-12-09T14:58:52.516Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2024-12-09T14:58:52.517Z] > authorizing via signed-in user (bsaurabh482@gmail.com)
+[info] 
+     ######## #### ########  ######## ########     ###     ######  ########
+     ##        ##  ##     ## ##       ##     ##  ##   ##  ##       ##
+     ######    ##  ########  ######   ########  #########  ######  ######
+     ##        ##  ##    ##  ##       ##     ## ##     ##       ## ##
+     ##       #### ##     ## ######## ########  ##     ##  ######  ########
+
+You're about to initialize a Firebase project in this directory:
+
+  D:\project\medcare-master\backend
+
+[info] 
+=== Project Setup
+[info] 
+[info] First, let's associate this project directory with a Firebase project.
+[info] You can create multiple project aliases by running firebase use --add, 
+[info] but for now we'll just set up a default project.
+[info] 
+[info] i  If you want to create a project in a Google Cloud organization or folder, please use "firebase projects:create" instead, and return to this command when you've created the project. 

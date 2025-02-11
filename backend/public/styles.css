@@ -1,0 +1,75 @@
+@import url('https://fonts.googleapis.com/css2?family=Cinzel&family=Cinzel+Decorative&family=Libre+Baskerville&family=Roboto&display=swap');
+
+body {
+  margin: 0;
+  padding: 0;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+.container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    padding-left: 7%;
+    padding-right: 7%;
+}
+
+.left-column {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex: 1;
+}
+
+.heading {
+    font-family: 'Cinzel Decorative', cursive;
+    font-size: 3rem;
+    font-weight: bold;
+    margin-bottom: 10px;
+}
+
+.p1 {
+    color: #1785f8;
+}
+
+.p2 {
+    color: #87d147;
+    font-family: 'Cinzel', serif;
+}
+
+.sub-heading {
+    font-family: 'Roboto', sans-serif;
+    font-size: 1.1rem;
+    opacity: 0.8;
+}
+
+.right-column {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex: 1;
+}
+
+.right-column img {
+    max-width: 100%;
+}
+
+@media screen and (max-width: 767px) {
+    .container {
+        flex-direction: column;
+        gap: 30px;
+        padding-top: 14%;
+    }
+
+    .left-column, .right-column {
+        width: 100%;
+    }
+}
