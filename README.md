@@ -81,7 +81,12 @@ HealthNet
   FIREBASE_MESSAGING_SENDER_ID=your_firebase_messaging_sender_id
   FIREBASE_APP_ID=your_firebase_app_id
   ```
+## Frontend Environment Variables
+Create a `.env` file in the frontend directory and add the following variable for Google Maps API:
 
+```env
+REACT_APP_GOOGLE_MAPS_API_KEY=your_google_maps_api_key
+```
   ## Available Scripts
   ### Frontend
   - `npm start`: Starts the development server.
