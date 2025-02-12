@@ -10,7 +10,7 @@ const hospitalLocations = [
   { lat: 29.2136, lng: 79.5068, name: "Neelkanth Hospital" },
   { lat: 29.2131, lng: 79.5092, name: "Central Hospital" },
   { lat: 29.2122, lng: 79.5059, name: "Bombay Hospital and Research Centre" },
-  { lat: 28.5850, lng: 77.2080, name: "Aims Hospita" },
+  { lat: 28.5850, lng: 77.2080, name: "Aims Hospital" },
   { lat: 29.2267, lng: 79.5083, name: "Sai Hospital" },
   { lat: 29.2275, lng: 79.5032, name: "Tewari Maternity Center and Nursing Home" },
   { lat: 29.2189, lng: 79.5011, name: "Agarwal Clinic and Nursing Home" },
@@ -39,7 +39,7 @@ export default function ViewLocation() {
   const [showNearest, setShowNearest] = useState(false);
 
   const { isLoaded } = useJsApiLoader({
-    googleMapsApiKey: "AIzaSyA7VRrJc0nxBoH2WhemLcwhEqQnUCPfcTA",
+    googleMapsApiKey: process.env.REACT_APP_GOOGLE_MAPS_API_KEY,
   });
 
   // Fetch user's location
@@ -101,7 +101,7 @@ export default function ViewLocation() {
         }
       );
     }
-  }, [userLocation, showNearest, visibleHospitals, isLoaded]);
+  }, [userLocation, showNearest, visibleHospitals, isLoaded, findClosestHospital]);
 
   // Utility: Haversine Distance Calculation
   function haversineDistance(coord1, coord2) {
