@@ -1,7 +1,34 @@
 import React, { useState, useEffect } from "react";
 import { GoogleMap, Marker, DirectionsRenderer, useJsApiLoader } from "@react-google-maps/api";
-import axios from "axios"; // Ensure axios is installed
 import styles from "./ViewLocation.module.css";
+
+const hospitalLocations = [
+  { lat: 29.2075, lng: 79.5080, name: "Susheela Tiwari Government Hospital" },
+  { lat: 29.2225, lng: 79.5167, name: "Krishna Hospital and Research Centre" },
+  { lat: 29.2296, lng: 79.5053, name: "Vivekanand Hospital" },
+  { lat: 29.2284, lng: 79.4986, name: "Brij Lal Hospital" },
+  { lat: 29.2136, lng: 79.5068, name: "Neelkanth Hospital" },
+  { lat: 29.2131, lng: 79.5092, name: "Central Hospital" },
+  { lat: 29.2122, lng: 79.5059, name: "Bombay Hospital and Research Centre" },
+  { lat: 28.5850, lng: 77.2080, name: "Aims Hospital" },
+  { lat: 29.2267, lng: 79.5083, name: "Sai Hospital" },
+  { lat: 29.2275, lng: 79.5032, name: "Tewari Maternity Center and Nursing Home" },
+  { lat: 29.2189, lng: 79.5011, name: "Agarwal Clinic and Nursing Home" },
+  { lat: 29.2187, lng: 79.5142, name: "Eye Q Super Speciality Eye Hospital" },
+  { lat: 29.2244, lng: 79.5051, name: "Sanjiwani Hospital" },
+  { lat: 29.2226, lng: 79.5100, name: "Saraswati Hospital" },
+  { lat: 29.2279, lng: 79.5097, name: "Ram Hospital" },
+  { lat: 29.2210, lng: 79.5078, name: "Mittal Nursing Home" },
+  { lat: 29.2255, lng: 79.5065, name: "Mattrix Hospital" },
+  { lat: 29.2281, lng: 79.5014, name: "Shriram Hospital" },
+  { lat: 29.2248, lng: 79.5029, name: "Dr. Pooja Hospital" },
+  { lat: 29.2291, lng: 79.5089, name: "Jeevan Jyoti Hospital" },
+  { lat: 29.2266, lng: 79.5071, name: "Himalayan Eye Hospital" },
+  { lat: 29.2214, lng: 79.5042, name: "Vinayak Hospital" },
+  { lat: 29.2233, lng: 79.5069, name: "Mahesh Hospital" },
+  { lat: 29.2287, lng: 79.5056, name: "Arun Hospital" },
+  { lat: 29.2209, lng: 79.5103, name: "Bhatt Hospital" }
+];
 
 export default function ViewLocation() {
   const [userLocation, setUserLocation] = useState(null);
@@ -10,6 +37,7 @@ export default function ViewLocation() {
   const [range, setRange] = useState(50); // Default range in km
   const [visibleHospitals, setVisibleHospitals] = useState([]);
   const [showNearest, setShowNearest] = useState(false);
+
   const { isLoaded } = useJsApiLoader({
     googleMapsApiKey: process.env.REACT_APP_GOOGLE_MAPS_API_KEY,
   });
@@ -29,48 +57,32 @@ export default function ViewLocation() {
     } else {
       setError("Geolocation is not supported by this browser.");
     }
-  }, [range]);
-
-  // Fetch hospitals from backend
-  useEffect(() => {
-    const fetchHospitals = async () => {
-      try {
-        const response = await axios.get('http://localhost:5000/api/hospitals'); // Adjust the endpoint if needed
-        console.log("Fetched hospitals:", response.data);
-        setVisibleHospitals(response.data); // Assuming the data is an array of hospital objects
-      } catch (error) {
-        console.error("Error fetching hospitals:", error);
-      }
-    };
-
-    fetchHospitals();
   }, []);
 
   // Update visible hospitals based on range
   useEffect(() => {
-    if (userLocation && visibleHospitals.length) {
-      const filteredHospitals = visibleHospitals.filter((hospital) => {
+    if (userLocation) {
+      const filteredHospitals = hospitalLocations.filter((hospital) => {
         const distance = haversineDistance(userLocation, hospital);
-        return distance <= range * 1000; // Convert km to meters
+        return distance <= range;
       });
 
-      console.log("Filtered hospitals within range:", filteredHospitals);
+      // Set visibleHospitals to the filtered list of hospitals within range
       setVisibleHospitals(filteredHospitals);
     }
-  }, [userLocation, range, visibleHospitals]);
+  }, [userLocation, range]);
 
   // Calculate shortest path to the nearest hospital
   useEffect(() => {
     if (userLocation && showNearest && isLoaded) {
+      // If there are no visible hospitals in range, don't show the nearest hospital route
       if (visibleHospitals.length === 0) {
-        setDirections(null); // Reset directions if no hospitals are in range
+        setDirections(null);  // Reset directions if no hospitals are in range
         return;
       }
 
       const closestHospital = findClosestHospital(userLocation, visibleHospitals);
       if (!closestHospital) return;
-
-      console.log("Closest hospital:", closestHospital);
 
       const directionsService = new window.google.maps.DirectionsService();
 
@@ -82,7 +94,6 @@ export default function ViewLocation() {
         },
         (result, status) => {
           if (status === window.google.maps.DirectionsStatus.OK) {
-            console.log("Directions result:", result);
             setDirections(result);
           } else {
             console.error("Directions request failed due to:", status);
@@ -90,7 +101,7 @@ export default function ViewLocation() {
         }
       );
     }
-  }, [userLocation, showNearest, visibleHospitals, isLoaded]);
+  }, [userLocation, showNearest, visibleHospitals, isLoaded, findClosestHospital]);
 
   // Utility: Haversine Distance Calculation
   function haversineDistance(coord1, coord2) {
@@ -105,7 +116,7 @@ export default function ViewLocation() {
         Math.sin(dLng / 2) *
         Math.sin(dLng / 2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return R * c; // distance in km
+    return R * c;
   }
 
   // Find the closest hospital
@@ -122,7 +133,7 @@ export default function ViewLocation() {
   }
 
   return (
-    <div className={styles.container} >
+    <div className={styles.container}>
       <header className={styles.navbar}>
         <h1>View Location</h1>
       </header>

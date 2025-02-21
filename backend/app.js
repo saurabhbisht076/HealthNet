@@ -3,7 +3,6 @@ import express from "express";
 import mongoose from "mongoose";
 import cors from "cors";
 import api from "./routes/index.js";
-import hospitalRoutes from "./routes/hospitalRoutes.js";
 
 const app = express();
 
@@ -31,7 +30,6 @@ app.get("/", (req, res) => {
 });
 
 app.use("/api", api);
-app.use("/api/hospitals", hospitalRoutes);
 
 const port = process.env.PORT || 5000;
 
