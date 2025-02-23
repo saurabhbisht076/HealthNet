@@ -1,180 +1,213 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { GoogleMap, Marker, DirectionsRenderer, useJsApiLoader } from "@react-google-maps/api";
 import styles from "./ViewLocation.module.css";
 
 const hospitalLocations = [
-  { lat: 29.2075, lng: 79.5080, name: "Susheela Tiwari Government Hospital" },
-  { lat: 29.2225, lng: 79.5167, name: "Krishna Hospital and Research Centre" },
-  { lat: 29.2296, lng: 79.5053, name: "Vivekanand Hospital" },
-  { lat: 29.2284, lng: 79.4986, name: "Brij Lal Hospital" },
-  { lat: 29.2136, lng: 79.5068, name: "Neelkanth Hospital" },
-  { lat: 29.2131, lng: 79.5092, name: "Central Hospital" },
-  { lat: 29.2122, lng: 79.5059, name: "Bombay Hospital and Research Centre" },
-  { lat: 28.5850, lng: 77.2080, name: "Aims Hospital" },
-  { lat: 29.2267, lng: 79.5083, name: "Sai Hospital" },
-  { lat: 29.2275, lng: 79.5032, name: "Tewari Maternity Center and Nursing Home" },
-  { lat: 29.2189, lng: 79.5011, name: "Agarwal Clinic and Nursing Home" },
-  { lat: 29.2187, lng: 79.5142, name: "Eye Q Super Speciality Eye Hospital" },
-  { lat: 29.2244, lng: 79.5051, name: "Sanjiwani Hospital" },
-  { lat: 29.2226, lng: 79.5100, name: "Saraswati Hospital" },
-  { lat: 29.2279, lng: 79.5097, name: "Ram Hospital" },
-  { lat: 29.2210, lng: 79.5078, name: "Mittal Nursing Home" },
-  { lat: 29.2255, lng: 79.5065, name: "Mattrix Hospital" },
-  { lat: 29.2281, lng: 79.5014, name: "Shriram Hospital" },
-  { lat: 29.2248, lng: 79.5029, name: "Dr. Pooja Hospital" },
-  { lat: 29.2291, lng: 79.5089, name: "Jeevan Jyoti Hospital" },
-  { lat: 29.2266, lng: 79.5071, name: "Himalayan Eye Hospital" },
-  { lat: 29.2214, lng: 79.5042, name: "Vinayak Hospital" },
-  { lat: 29.2233, lng: 79.5069, name: "Mahesh Hospital" },
-  { lat: 29.2287, lng: 79.5056, name: "Arun Hospital" },
-  { lat: 29.2209, lng: 79.5103, name: "Bhatt Hospital" }
+  { lat: 28.6139, lng: 77.2090, name: "AIIMS Delhi" },
+  { lat: 28.6280, lng: 77.3649, name: "Apollo Hospital" },
+  { lat: 28.5355, lng: 77.3910, name: "Fortis Hospital" },
+  { lat: 28.6285, lng: 77.2069, name: "Max Super Specialty" },
+  { lat: 28.6423, lng: 77.3445, name: "Safdarjung Hospital" },
+  { lat: 28.6285, lng: 77.2069, name: "BLK Super Speciality" },
+  { lat: 28.5832, lng: 77.2361, name: "Holy Family Hospital" }
 ];
+
+const haversineDistance = (coord1, coord2) => {
+  const toRad = angle => (angle * Math.PI) / 180;
+  const R = 6371;
+  const dLat = toRad(coord2.lat - coord1.lat);
+  const dLng = toRad(coord2.lng - coord1.lng);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toRad(coord1.lat)) *
+    Math.cos(toRad(coord2.lat)) *
+    Math.sin(dLng / 2) *
+    Math.sin(dLng / 2);
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+};
 
 export default function ViewLocation() {
   const [userLocation, setUserLocation] = useState(null);
   const [error, setError] = useState("");
   const [directions, setDirections] = useState(null);
-  const [range, setRange] = useState(50); // Default range in km
+  const [range, setRange] = useState(50);
   const [visibleHospitals, setVisibleHospitals] = useState([]);
   const [showNearest, setShowNearest] = useState(false);
 
   const { isLoaded } = useJsApiLoader({
     googleMapsApiKey: process.env.REACT_APP_GOOGLE_MAPS_API_KEY,
+    libraries: ["places"]
   });
 
-  // Fetch user's location
+  const findClosestHospital = useCallback(
+    (userLoc, hospitals) => hospitals.reduce(
+      (closest, hospital) => {
+        const distance = haversineDistance(userLoc, hospital);
+        return distance < closest.distance ? { location: hospital, distance } : closest;
+      },
+      { location: null, distance: Infinity }
+    ).location,
+    []
+  );
+
   useEffect(() => {
+    let watchId;
+    
     if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const { latitude, longitude } = position.coords;
-          setUserLocation({ lat: latitude, lng: longitude });
-        },
-        () => {
-          setError("Unable to retrieve your location.");
+      watchId = navigator.geolocation.watchPosition( 
+        ({ coords }) => setUserLocation({
+          lat: coords.latitude,
+          lng: coords.longitude
+        }),
+        (error) => console.error("Location error:", error),
+        { 
+          enableHighAccuracy: true,
+          maximumAge: 0,
+          timeout: 5000 
         }
       );
-    } else {
-      setError("Geolocation is not supported by this browser.");
     }
+  
+    return () => {
+      if (watchId) navigator.geolocation.clearWatch(watchId); 
+    };
   }, []);
 
-  // Update visible hospitals based on range
   useEffect(() => {
     if (userLocation) {
-      const filteredHospitals = hospitalLocations.filter((hospital) => {
-        const distance = haversineDistance(userLocation, hospital);
-        return distance <= range;
-      });
-
-      // Set visibleHospitals to the filtered list of hospitals within range
-      setVisibleHospitals(filteredHospitals);
+      const filtered = hospitalLocations.filter(hospital => 
+        haversineDistance(userLocation, hospital) <= range
+      );
+      setVisibleHospitals(filtered.sort((a, b) => 
+        haversineDistance(userLocation, a) - haversineDistance(userLocation, b)
+      ));
     }
   }, [userLocation, range]);
 
-  // Calculate shortest path to the nearest hospital
   useEffect(() => {
-    if (userLocation && showNearest && isLoaded) {
-      // If there are no visible hospitals in range, don't show the nearest hospital route
-      if (visibleHospitals.length === 0) {
-        setDirections(null);  // Reset directions if no hospitals are in range
-        return;
-      }
-
-      const closestHospital = findClosestHospital(userLocation, visibleHospitals);
-      if (!closestHospital) return;
-
-      const directionsService = new window.google.maps.DirectionsService();
-
-      directionsService.route(
-        {
-          origin: userLocation,
-          destination: closestHospital,
-          travelMode: window.google.maps.TravelMode.DRIVING,
-        },
-        (result, status) => {
-          if (status === window.google.maps.DirectionsStatus.OK) {
-            setDirections(result);
-          } else {
-            console.error("Directions request failed due to:", status);
-          }
+    if (!userLocation || !showNearest || !isLoaded || visibleHospitals.length === 0) return;
+  
+    const calculateDirections = async () => {
+      try {
+        const closest = findClosestHospital(userLocation, visibleHospitals);
+        
+        if (!closest) {
+          setDirections(null);
+          return;
         }
-      );
-    }
+  
+        const directionsService = new window.google.maps.DirectionsService();
+        const result = await directionsService.route({
+          origin: userLocation,
+          destination: closest,
+          travelMode: window.google.maps.TravelMode.DRIVING
+        });
+  
+        setDirections(result);
+      } catch (error) {
+        console.error("Directions error:", error);
+        setDirections(null);
+        setShowNearest(false); // Reset on error
+      }
+    };
+  
+    calculateDirections();
   }, [userLocation, showNearest, visibleHospitals, isLoaded, findClosestHospital]);
-
-  // Utility: Haversine Distance Calculation
-  function haversineDistance(coord1, coord2) {
-    const toRad = (angle) => (angle * Math.PI) / 180;
-    const R = 6371; // Earth's radius in km
-    const dLat = toRad(coord2.lat - coord1.lat);
-    const dLng = toRad(coord2.lng - coord1.lng);
-    const a =
-      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.cos(toRad(coord1.lat)) *
-        Math.cos(toRad(coord2.lat)) *
-        Math.sin(dLng / 2) *
-        Math.sin(dLng / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return R * c;
-  }
-
-  // Find the closest hospital
-  function findClosestHospital(userLocation, hospitals) {
-    return hospitals.reduce(
-      (closest, hospital) => {
-        const distance = haversineDistance(userLocation, hospital);
-        return distance < closest.distance
-          ? { location: { lat: hospital.lat, lng: hospital.lng }, distance }
-          : closest;
-      },
-      { location: null, distance: Infinity }
-    ).location;
-  }
 
   return (
     <div className={styles.container}>
       <header className={styles.navbar}>
-        <h1>View Location</h1>
+        <h1>Emergency Medical Facilities</h1>
       </header>
+      
       <div className={styles.controls}>
-        <label>
-          Range (km):{" "}
+        <div className={styles.rangeControl}>
+          <label>Search Radius:</label>
           <input
-            type="number"
+            type="range"
+            min="5"
+            max="100"
             value={range}
-            onChange={(e) => setRange(e.target.value)}
-            min="1"
+            onChange={(e) => setRange(Number(e.target.value))}
           />
-        </label>
-        <button onClick={() => setShowNearest(!showNearest)}>
-          {showNearest ? "Show All Hospitals" : "Show Nearest Hospital"}
-        </button>
+          <span>{range} km</span>
+        </div>
+        <button
+  className={`${styles.actionButton} ${showNearest ? styles.active : ""}`}
+  onClick={() => {
+    if (visibleHospitals.length > 0) {
+      setShowNearest(!showNearest);
+    }
+  }}
+  disabled={!visibleHospitals.length}
+>
+  {showNearest ? "Show All Facilities" : "Show Nearest Facility"}
+</button>
       </div>
+
       <div className={styles.content}>
         {error ? (
-          <p className={styles.error}>{error}</p>
+          <div className={styles.errorContainer}>
+            <p className={styles.errorText}>⚠️ {error}</p>
+            <p>Please enable location permissions to use this feature.</p>
+          </div>
         ) : !userLocation ? (
-          <p>Fetching your location...</p>
+          <div className={styles.loading}>
+            <div className={styles.spinner}></div>
+            <p>Detecting your location...</p>
+          </div>
+        ) : isLoaded ? (
+          <GoogleMap
+            center={userLocation}
+            zoom={12}
+            mapContainerClassName={styles.mapContainer}
+            options={{
+              streetViewControl: false,
+              mapTypeControl: false,
+              fullscreenControl: false
+            }}
+          >
+            <Marker 
+              position={userLocation}
+              label="📍 You"
+              icon={{
+                path: window.google.maps.SymbolPath.CIRCLE,
+                scale: 8,
+                fillColor: "#4285F4",
+                fillOpacity: 1,
+                strokeWeight: 2,
+                strokeColor: "#FFFFFF"
+              }}
+            />
+
+            {!showNearest && visibleHospitals.map((hospital) => (
+              <Marker
+                key={`${hospital.lat}-${hospital.lng}`}
+                position={{ lat: hospital.lat, lng: hospital.lng }}
+                label={hospital.name}
+                icon={{
+                  url: "https://maps.google.com/mapfiles/ms/icons/red-dot.png",
+                  scaledSize: new window.google.maps.Size(40, 40)
+                }}
+              />
+            ))}
+
+            {directions && (
+              <DirectionsRenderer 
+                directions={directions}
+                options={{
+                  polylineOptions: {
+                    strokeColor: "#FF0000",
+                    strokeOpacity: 0.8,
+                    strokeWeight: 5
+                  },
+                  suppressMarkers: true
+                }}
+              />
+            )}
+          </GoogleMap>
         ) : (
-          isLoaded && (
-            <GoogleMap
-              center={userLocation}
-              zoom={12}
-              mapContainerClassName={styles.mapContainer}
-            >
-              <Marker position={userLocation} label="You" />
-              {!showNearest && visibleHospitals.length > 0 &&
-                visibleHospitals.map((hospital, index) => (
-                  <Marker
-                    key={index}
-                    position={{ lat: hospital.lat, lng: hospital.lng }}
-                    label={hospital.name}
-                  />
-                ))}
-              {directions && <DirectionsRenderer directions={directions} />}
-            </GoogleMap>
-          )
+          <p className={styles.errorText}>Failed to load maps</p>
         )}
       </div>
     </div>
