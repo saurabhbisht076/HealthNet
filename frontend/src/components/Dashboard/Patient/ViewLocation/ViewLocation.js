@@ -57,35 +57,50 @@ export default function ViewLocation() {
 
   // Find and show shortest path to nearest hospital
   useEffect(() => {
-    if (userLocation && showNearest && isLoaded) {
-      if (hospitals.length === 0) {
-        setDirections(null); // Reset directions if no hospitals
-        return;
-      }
+    if (!userLocation || !showNearest || !isLoaded) return;
 
-      const closestHospital = findClosestHospital(userLocation, hospitals);
-      if (!closestHospital) return;
-
-      console.log("Closest hospital:", closestHospital);
-
-      const directionsService = new window.google.maps.DirectionsService();
-      directionsService.route(
-        {
-          origin: userLocation,
-          destination: closestHospital,
-          travelMode: window.google.maps.TravelMode.DRIVING,
-        },
-        (result, status) => {
-          if (status === window.google.maps.DirectionsStatus.OK) {
-            console.log("Directions result:", result);
-            setDirections(result);
-          } else {
-            console.error("Directions request failed:", status);
-          }
-        }
-      );
+    // If range is 0, reset everything
+    if (range <= 0) {
+      setDirections(null);
+      return;
     }
-  }, [userLocation, showNearest, hospitals, isLoaded]);
+
+    // Filter hospitals within range
+    const hospitalsInRange = hospitals.filter(
+      (hospital) => haversineDistance(userLocation, hospital) <= range
+    );
+
+    // If no hospitals are in range, reset directions and return
+    if (hospitalsInRange.length === 0) {
+      setDirections(null);
+      return;
+    }
+
+    const closestHospital = findClosestHospital(userLocation, hospitalsInRange);
+    if (!closestHospital) {
+      setDirections(null);
+      return;
+    }
+
+    console.log("Closest hospital:", closestHospital);
+
+    const directionsService = new window.google.maps.DirectionsService();
+    directionsService.route(
+      {
+        origin: userLocation,
+        destination: closestHospital,
+        travelMode: window.google.maps.TravelMode.DRIVING,
+      },
+      (result, status) => {
+        if (status === window.google.maps.DirectionsStatus.OK) {
+          setDirections(result);
+        } else {
+          console.error("Directions request failed:", status);
+          setDirections(null);
+        }
+      }
+    );
+  }, [userLocation, showNearest, hospitals, range, isLoaded]);
 
   // Utility: Haversine Distance Calculation
   function haversineDistance(coord1, hospital) {
@@ -134,7 +149,7 @@ export default function ViewLocation() {
             type="number"
             value={range}
             onChange={(e) => setRange(Number(e.target.value))}
-            min="1"
+            min="0"
           />
         </label>
         <button onClick={() => setShowNearest(!showNearest)}>
