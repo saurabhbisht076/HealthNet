@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { GoogleMap, Marker, DirectionsRenderer, useJsApiLoader } from "@react-google-maps/api";
-import axios from "axios"; // Ensure axios is installed
+import axios from "axios";
 import styles from "./ViewLocation.module.css";
 
 export default function ViewLocation() {
@@ -8,7 +8,7 @@ export default function ViewLocation() {
   const [error, setError] = useState("");
   const [directions, setDirections] = useState(null);
   const [range, setRange] = useState(50); // Default range in km
-  const [visibleHospitals, setVisibleHospitals] = useState([]);
+  const [hospitals, setHospitals] = useState([]);
   const [showNearest, setShowNearest] = useState(false);
   const { isLoaded } = useJsApiLoader({
     googleMapsApiKey: process.env.REACT_APP_GOOGLE_MAPS_API_KEY,
@@ -29,51 +29,46 @@ export default function ViewLocation() {
     } else {
       setError("Geolocation is not supported by this browser.");
     }
-  }, [range]);
+  }, []);
 
   // Fetch hospitals from backend
   useEffect(() => {
+    if (!userLocation) return;
+
     const fetchHospitals = async () => {
       try {
-        const response = await axios.get('http://localhost:5000/api/hospitals'); // Adjust the endpoint if needed
+        const response = await axios.get("http://localhost:5000/api/hospitals", {
+          params: {
+            lat: userLocation.lat,
+            lng: userLocation.lng,
+            range: range,
+          },
+        });
+
         console.log("Fetched hospitals:", response.data);
-        setVisibleHospitals(response.data); // Assuming the data is an array of hospital objects
+        setHospitals(response.data); // Hospitals are already filtered by backend
       } catch (error) {
         console.error("Error fetching hospitals:", error);
       }
     };
 
     fetchHospitals();
-  }, []);
+  }, [userLocation, range]);
 
-  // Update visible hospitals based on range
-  useEffect(() => {
-    if (userLocation && visibleHospitals.length) {
-      const filteredHospitals = visibleHospitals.filter((hospital) => {
-        const distance = haversineDistance(userLocation, hospital);
-        return distance <= range * 1000; // Convert km to meters
-      });
-
-      console.log("Filtered hospitals within range:", filteredHospitals);
-      setVisibleHospitals(filteredHospitals);
-    }
-  }, [userLocation, range, visibleHospitals]);
-
-  // Calculate shortest path to the nearest hospital
+  // Find and show shortest path to nearest hospital
   useEffect(() => {
     if (userLocation && showNearest && isLoaded) {
-      if (visibleHospitals.length === 0) {
-        setDirections(null); // Reset directions if no hospitals are in range
+      if (hospitals.length === 0) {
+        setDirections(null); // Reset directions if no hospitals
         return;
       }
 
-      const closestHospital = findClosestHospital(userLocation, visibleHospitals);
+      const closestHospital = findClosestHospital(userLocation, hospitals);
       if (!closestHospital) return;
 
       console.log("Closest hospital:", closestHospital);
 
       const directionsService = new window.google.maps.DirectionsService();
-
       directionsService.route(
         {
           origin: userLocation,
@@ -85,27 +80,33 @@ export default function ViewLocation() {
             console.log("Directions result:", result);
             setDirections(result);
           } else {
-            console.error("Directions request failed due to:", status);
+            console.error("Directions request failed:", status);
           }
         }
       );
     }
-  }, [userLocation, showNearest, visibleHospitals, isLoaded]);
+  }, [userLocation, showNearest, hospitals, isLoaded]);
 
   // Utility: Haversine Distance Calculation
-  function haversineDistance(coord1, coord2) {
+  function haversineDistance(coord1, hospital) {
     const toRad = (angle) => (angle * Math.PI) / 180;
     const R = 6371; // Earth's radius in km
-    const dLat = toRad(coord2.lat - coord1.lat);
-    const dLng = toRad(coord2.lng - coord1.lng);
+
+    const lat2 = hospital.location.coordinates[1];
+    const lng2 = hospital.location.coordinates[0];
+
+    const dLat = toRad(lat2 - coord1.lat);
+    const dLng = toRad(lng2 - coord1.lng);
+
     const a =
       Math.sin(dLat / 2) * Math.sin(dLat / 2) +
       Math.cos(toRad(coord1.lat)) *
-        Math.cos(toRad(coord2.lat)) *
+        Math.cos(toRad(lat2)) *
         Math.sin(dLng / 2) *
         Math.sin(dLng / 2);
+
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return R * c; // distance in km
+    return R * c; // Distance in km
   }
 
   // Find the closest hospital
@@ -114,7 +115,7 @@ export default function ViewLocation() {
       (closest, hospital) => {
         const distance = haversineDistance(userLocation, hospital);
         return distance < closest.distance
-          ? { location: { lat: hospital.lat, lng: hospital.lng }, distance }
+          ? { location: { lat: hospital.location.coordinates[1], lng: hospital.location.coordinates[0] }, distance }
           : closest;
       },
       { location: null, distance: Infinity }
@@ -122,7 +123,7 @@ export default function ViewLocation() {
   }
 
   return (
-    <div className={styles.container} >
+    <div className={styles.container}>
       <header className={styles.navbar}>
         <h1>View Location</h1>
       </header>
@@ -132,7 +133,7 @@ export default function ViewLocation() {
           <input
             type="number"
             value={range}
-            onChange={(e) => setRange(e.target.value)}
+            onChange={(e) => setRange(Number(e.target.value))}
             min="1"
           />
         </label>
@@ -153,11 +154,14 @@ export default function ViewLocation() {
               mapContainerClassName={styles.mapContainer}
             >
               <Marker position={userLocation} label="You" />
-              {!showNearest && visibleHospitals.length > 0 &&
-                visibleHospitals.map((hospital, index) => (
+              {!showNearest &&
+                hospitals.map((hospital, index) => (
                   <Marker
                     key={index}
-                    position={{ lat: hospital.lat, lng: hospital.lng }}
+                    position={{
+                      lat: hospital.location.coordinates[1],
+                      lng: hospital.location.coordinates[0],
+                    }}
                     label={hospital.name}
                   />
                 ))}
